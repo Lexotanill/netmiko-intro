@@ -1,0 +1,42 @@
+from netmiko import ConnectHandler
+
+router_mikrotik = {
+    'device_type': 'mikrotik_routeros',
+    'host':   '10.0.0.117',
+    'username': 'admin',
+    'password': '0000',
+    'port': 22,  # optional, defaults to 22
+    'secret': '',  # optional, defaults to ''
+}
+
+conexion = ConnectHandler(**router_mikrotik)
+
+# Definir comandos a ejecutar para Router MikroTik
+configurar_router_mikrotik = [
+    # Asignar IPs a las interfaces
+    '/interface ethernet set [find default-name=ether1] name=e0/0',
+    '/interface ethernet set [find default-name=ether2] name=e0/1',
+    '/interface ethernet set [find default-name=ether3] name=e0/2',
+    '/ip address add address=172.26.22.129/25 interface=e0/0',
+    '/ip address add address=192.168.22.2/30 interface=e0/1',
+    '/ip dhcp-client add interface=e0/2 disabled=no',
+    # Habilitar NAT
+    '/ip firewall nat add chain=srcnat src-address=172.26.22.128/25 action=masquerade out-interface=e0/2',
+    # Configurar DHCP Server
+    '/ip pool add name=DHCP_POOL2 ranges=172.26.22.130-172.26.22.254',
+    '/ip dhcp-server network add address=172.26.22.128/25 gateway=172.26.22.129',
+    '/ip dhcp-server add address-pool=DHCP_POOL2 interface=e0/0 lease-time=10m name=dhcp1',
+    # Habilitar SSH
+    '/system identity set name=Router2',
+    '/ip ssh set strong-crypto=yes',
+    '/ip service set ssh port=22',
+    # Configurar el enrutamiento estático hacia Router 1
+    '/ip route add dst-address=172.26.22.0/25 gateway=192.168.22.2',
+]
+
+# Ejecutar comandos (send_config_set - para enviar comandos de configuración)
+accion1 = conexion.send_config_set(configurar_router_mikrotik)
+print(accion1)
+
+# Cerrar la conexión
+conexion.disconnect()
